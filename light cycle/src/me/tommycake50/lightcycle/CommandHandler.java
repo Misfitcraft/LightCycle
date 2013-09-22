@@ -40,6 +40,7 @@ public class CommandHandler implements CommandExecutor{
 								}else{
 									GameInstance g1 = instance.startMatch(Arenas.getArenaByName(args[1]));
 									g1.addPlayer((Player)sender);
+									g1.startCountdown();
 								}
 							}
 						}else{
