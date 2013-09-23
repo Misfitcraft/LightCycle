@@ -19,8 +19,12 @@ public class Arenas{
 	}
 	
 	public static void removeArena(Arena a){
-		arenas.remove(a);
-		LightCycle.removeData(a.getName());
+		if(!(a == null)){
+			arenas.remove(a);
+			LightCycle.removeData(a.getName());
+		}else{
+			arenas.clear();
+		}
 	}
 	
 	public ArrayList<Arena> getArenas() {
