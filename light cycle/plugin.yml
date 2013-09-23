@@ -2,7 +2,7 @@ main: me.tommycake50.lightcycle
 name: LightCycle
 version: 1
 author: tommycake50
-depends: [CountdownLib]
+depend: [CountdownLib]
 commands:
     lc:
     lightcycle:

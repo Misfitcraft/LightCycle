@@ -88,9 +88,9 @@ public class CommandHandler implements CommandExecutor{
 			cs.set("minZ", instance.weu.getSelectionMinPoint(sender).getZ());
 			cs.set("maxX", instance.weu.getSelectionMaxPoint(sender).getX());
 			cs.set("maxZ", instance.weu.getSelectionMaxPoint(sender).getZ());
-			cs.set("world", instance.weu.getSelectionWorld(sender));
+			cs.set("world", instance.weu.getSelectionMinPoint((sender)).getWorld().getName());
 			instance.loadArenas();
-		}else{
+		}else{								
 			sender.sendMessage(ChatColor.DARK_RED + "Please make a worldedit selection before trying to define an arena!");
 		}
 	}
