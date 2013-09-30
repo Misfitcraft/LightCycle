@@ -7,14 +7,20 @@ import me.tommycake50.countdownlib.CountdownEndEvent;
 import me.tommycake50.countdownlib.CountdownTickEvent;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.metadata.LazyMetadataValue;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitRunnable;
 
 public class GameInstance implements Listener{
 	private HashMap<String, Boolean> readyplayers = new HashMap<String, Boolean>();
@@ -40,15 +46,8 @@ public class GameInstance implements Listener{
 		equipPlayers();
 	}
 	
-	private boolean isOut(Player p){
-		if(readyplayers.keySet().contains(p.getName())){
-			return readyplayers.keySet().contains(p.getName());
-		}
-		return true;
-	}
-	
 	public void leftArena(String player){
-		readyplayers.remove(player);
+		removePlayer(instance.getServer().getPlayerExact(player));
 		readyplayers.remove(player);
 		teleportAway(player);
 	}
@@ -79,12 +78,15 @@ public class GameInstance implements Listener{
 			startCountdown();
 		}
 	}
-	
+	int iterations = 0;
 	public void startCountdown(){
 		Countdown c = new Countdown(10, 20, false, instance);
-		for(String s : readyplayers.keySet()){
-			instance.getServer().getPlayerExact(s).sendMessage(ChatColor.GREEN + "[LightCycle]Game starting in 10 seconds");
+		if(iterations == 0 || iterations == 10|| iterations == 20 || iterations == 30 || iterations == 50 || iterations == 100){
+			for(String s : readyplayers.keySet()){
+				instance.getServer().getPlayerExact(s).sendMessage(ChatColor.GREEN + "[LightCycle]Game starting in 10 seconds");
+			}
 		}
+		iterations++;
 		c.start();
 	}
 
@@ -92,8 +94,12 @@ public class GameInstance implements Listener{
 		readyplayers.put(p.getName(), false);
 	}
 	
+	@Deprecated
 	public void removePlayer(Player p){
 		readyplayers.remove(p.getName());
+		p.removeMetadata("lctagX", instance);
+		p.removeMetadata("lctagY", instance);
+		p.removeMetadata("lctagZ", instance);
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -105,18 +111,19 @@ public class GameInstance implements Listener{
 			leftArena(((Player)e.getPlayer()).getName());
 		}
 		if(readyplayers.size() == 0){
-			reset();
-			GameInstanceHandler.currentgames.remove(this);
-			readyplayers.clear();
-			instance = null;
-			arena = null;
-			readyplayers = null;
-			System.gc();
+			stop();
 		}
 	}
 	
 	public void stop(){
 		reset();
+		for(String s : readyplayers.keySet()){
+			instance.getServer().getPlayerExact(s).removeMetadata("lctagX", instance);
+			for(PotionEffect p : instance.getServer().getPlayerExact(s).getActivePotionEffects()){
+				instance.getServer().getPlayerExact(s).removePotionEffect(p.getType());
+			}
+		}
+		HandlerList.unregisterAll(this);
 		GameInstanceHandler.currentgames.remove(this);
 		readyplayers.clear();
 		instance = null;
@@ -140,15 +147,53 @@ public class GameInstance implements Listener{
 			if(e.getCause().equals(DamageCause.LAVA)){
 				((Player)e.getEntity()).teleport(arena.getLobby());
 				((Player)e.getEntity()).sendMessage(ChatColor.RED + "[LightCycle]You lose!");
-				readyplayers.remove(((Player)e.getEntity()).getName());
+				leftArena(((Player)e.getEntity()).getName());
 				if(readyplayers.size() == 1){
-					instance.getServer().getPlayerExact(readyplayers.keySet().iterator().next()).sendMessage(ChatColor.GREEN + "[LightCycle] wow! you win, here have a cookie");
-					instance.getServer().getPlayerExact(readyplayers.keySet().iterator().next()).getInventory().addItem(new ItemStack(Material.COOKIE, 1));
-					instance.getServer().getPlayerExact(readyplayers.keySet().iterator().next()).updateInventory();
-					instance.getServer().getPlayerExact(readyplayers.keySet().iterator().next()).teleport(arena.getLobby());
+					Player p = instance.getServer().getPlayerExact(readyplayers.keySet().iterator().next());
+					p.sendMessage(ChatColor.GREEN + "[LightCycle] wow! you win, here have a cookie");
+					p.getInventory().addItem(new ItemStack(Material.COOKIE, 1));
+					p.updateInventory();
+					p.teleport(arena.getLobby());
 					stop();
 				}
 			}
 		}
+	}
+	
+	@EventHandler
+	public void onPlayerMoveEvent(PlayerMoveEvent e){
+		if(hasStarted){
+			if(readyplayers.keySet().contains(e.getPlayer().getName())){
+				if(e.getPlayer().hasMetadata("lctagX")){
+					Location l = new Location(arena.getLobby().getWorld(), e.getPlayer().getMetadata("lctagX").get(0).asInt(), e.getPlayer().getMetadata("lctagY").get(0).asInt(), e.getPlayer().getMetadata("lctagZ").get(0).asInt());
+					if(!(e.getFrom().getBlockX() == l.getBlockX() && e.getFrom().getBlockY() == l.getBlockY() && e.getFrom().getBlockZ() == l.getBlockZ())){
+						removeLater(e.getFrom());
+						e.getPlayer().setMetadata("lctagX", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockX())));
+						e.getPlayer().setMetadata("lctagY", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockY())));
+						e.getPlayer().setMetadata("lctagZ", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockZ())));
+					}
+				}else{
+					e.getPlayer().setMetadata("lctagX", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockX())));
+					e.getPlayer().setMetadata("lctagY", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockY())));
+					e.getPlayer().setMetadata("lctagZ", new LazyMetadataValue(instance, new LocationCallable(e.getFrom().getBlockZ())));
+				}
+			}
+		}
+	}
+
+	private void removeLater(final Location from){
+		new BukkitRunnable(){
+			@Override
+			public void run(){
+				arena.logRemove(from, from.getBlock().getType());
+				from.getBlock().setType(Material.AIR);
+			}
+		}.runTaskLater(instance, 10);
+	}
+	
+	@Override
+	protected void finalize() throws Throwable{
+		System.out.println("Finalized object: " + hashCode() + "(" + toString() + ") not important but it means that the GameInstance class for LightCycle is being removed and finalized propely");
+		super.finalize();
 	}
 }

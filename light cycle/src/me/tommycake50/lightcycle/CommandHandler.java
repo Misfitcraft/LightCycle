@@ -31,7 +31,7 @@ public class CommandHandler implements CommandExecutor{
 						Arenas.removeArena(Arenas.getArenaByName(args[1]));
 					}
 					if(args[0].equalsIgnoreCase("join")){
-						if(Arenas.getArenaByName(args[1]) != null){
+						if(Arenas.getArenaByName(args[1]) != null && !Arenas.getArenaByName(args[1]).isInEditMode()){
 							for(GameInstance g : GameInstanceHandler.currentgames){
 								if(g.getArena().equals(Arenas.getArenaByName(args[1])) && g.isInLobby()){
 									g.addPlayer((Player)sender);

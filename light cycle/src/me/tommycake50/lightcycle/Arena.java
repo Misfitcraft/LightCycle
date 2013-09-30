@@ -103,4 +103,8 @@ public class Arena implements Listener{
 	public void setEditMode(boolean enableEditMode){
 		editMode = enableEditMode;
 	}
+
+	public boolean isInEditMode() {
+		return editMode;
+	}
 }
